@@ -1,6 +1,6 @@
 {
   "name": "puppuccino",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "AI coding agent for the terminal, featuring Kaldi the Great Pyrenees",
   "type": "module",
   "bin": {
@@ -9,7 +9,7 @@
   },
   "main": "./dist/index.js",
   "scripts": {
-    "build": "tsup src/index.ts --format esm",
+    "build": "tsup src/index.ts src/chat.ts --format esm",
     "dev": "npx tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
@@ -21,6 +21,9 @@
     "@averagejoeslab/puppuccino-tui": "^0.1.5",
     "@averagejoeslab/puppuccino-server": "^0.1.2",
     "@averagejoeslab/puppuccino-sdk": "^0.1.1",
+    "@averagejoeslab/tui": "^1.0.0",
+    "@averagejoeslab/widgets": "^1.0.0",
+    "@averagejoeslab/style": "^1.0.0",
     "yargs": "^17.7.0"
   },
   "devDependencies": {
