@@ -1,0 +1,47 @@
+{
+  "name": "puppuccino",
+  "version": "0.1.0",
+  "description": "AI coding agent for the terminal, featuring Kaldi the Great Pyrenees",
+  "type": "module",
+  "bin": {
+    "puppuccino": "./dist/index.js",
+    "pup": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "bun run src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@puppuccino/core": "*",
+    "@puppuccino/tui": "*",
+    "@puppuccino/server": "*",
+    "@puppuccino/sdk": "*",
+    "yargs": "^17.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/yargs": "^17.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "ai",
+    "coding",
+    "agent",
+    "terminal",
+    "cli",
+    "llm",
+    "assistant"
+  ],
+  "author": "averagejoeslab",
+  "license": "MIT"
+}
