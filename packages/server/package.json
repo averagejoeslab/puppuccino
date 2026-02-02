@@ -1,6 +1,6 @@
 {
   "name": "@averagejoeslab/puppuccino-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "HTTP server for Puppuccino AI coding agent",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@averagejoeslab/puppuccino-core": "^0.1.1",
+    "@hono/zod-validator": "^0.4.0",
     "hono": "^4.0.0",
     "zod": "^3.23.0"
   },
