@@ -1,15 +1,15 @@
 {
   "name": "@averagejoeslab/puppuccino-tui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Terminal UI for Puppuccino AI coding agent",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     }
   },
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@averagejoeslab/puppuccino-core": "^0.1.0",
+    "@averagejoeslab/puppuccino-core": "^0.1.1",
     "@averagejoeslab/ansi": "^1.0.0",
     "@averagejoeslab/term": "^1.0.0",
     "@averagejoeslab/style": "^1.0.0",
