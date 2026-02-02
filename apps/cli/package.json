@@ -1,6 +1,6 @@
 {
   "name": "puppuccino",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "AI coding agent for the terminal, featuring Kaldi the Great Pyrenees",
   "type": "module",
   "bin": {
