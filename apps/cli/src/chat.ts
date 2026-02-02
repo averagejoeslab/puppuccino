@@ -1,8 +1,8 @@
 /**
  * Puppuccino Chat TUI - Full Elm Architecture Implementation
  *
- * Uses @averagejoeslab/tui for the runtime and widgets for a beautiful
- * terminal experience like Charm's Crush.
+ * A beautiful, interactive terminal UI for the Puppuccino AI coding agent.
+ * Features streaming responses, animated spinners, and a polished interface.
  */
 
 import {
@@ -19,6 +19,7 @@ import {
   quit,
   none,
   tick,
+  batch,
   Key,
 } from '@averagejoeslab/tui';
 
@@ -27,6 +28,7 @@ import {
   TextInput,
   Viewport,
   Progress,
+  Help,
   type SpinnerModel,
   type TextInputModel,
   type ViewportModel,
@@ -36,8 +38,11 @@ import {
   Style,
   RoundedBorder,
   joinVertical,
+  joinHorizontal,
   Position,
   truncate,
+  center,
+  padRight,
 } from '@averagejoeslab/style';
 
 import {
@@ -61,18 +66,12 @@ import { getTheme, KALDI, KALDI_COLORS, type Theme } from '@averagejoeslab/puppu
 // Message Types
 // ============================================================================
 
-interface SpinnerTickMsg { type: 'spinnerTick' }
-interface AgentEventMsg { type: 'agentEvent'; event: AgentEvent }
-interface AgentDoneMsg { type: 'agentDone' }
-interface AgentErrorMsg { type: 'agentError'; error: string }
+interface TickMsg { type: 'tick' }
 interface CheckAgentMsg { type: 'checkAgent' }
 interface PermissionResponseMsg { type: 'permissionResponse'; approved: boolean }
 
 type AppMsg =
-  | SpinnerTickMsg
-  | AgentEventMsg
-  | AgentDoneMsg
-  | AgentErrorMsg
+  | TickMsg
   | CheckAgentMsg
   | PermissionResponseMsg
   | KeyMsg
@@ -91,7 +90,7 @@ interface ChatMessage {
   toolName?: string;
 }
 
-// Global event queue for agent events
+// Global event queue for agent events (allows async communication)
 const eventQueue: AgentEvent[] = [];
 let agentRunning = false;
 let agentError: string | null = null;
@@ -112,6 +111,7 @@ interface AppModel extends Model<AppMsg> {
   currentResponse: string;
   permissionSelected: number;
   theme: Theme;
+  frameCount: number;
   _config: ReturnType<typeof loadConfig>;
   _provider: ReturnType<typeof createProviderInstance>;
   _tools: ReturnType<typeof createToolRegistry>;
@@ -128,14 +128,29 @@ function rgb(r: number, g: number, b: number) {
   return { r, g, b };
 }
 
+// Kaldi colors
+const CREAM = rgb(255, 250, 240);
+const TAN = rgb(210, 180, 140);
+const BROWN = rgb(139, 119, 101);
+const GREEN = rgb(144, 238, 144);
+const GOLD = rgb(255, 215, 0);
+const RED = rgb(255, 99, 71);
+const GRAY = rgb(128, 128, 128);
+const DARK_GRAY = rgb(80, 80, 80);
+const SKY_BLUE = rgb(135, 206, 235);
+
 function formatMessages(messages: ChatMessage[], theme: Theme, width: number): string {
+  if (messages.length === 0) {
+    return '';
+  }
+
   const lines: string[] = [];
 
   for (const msg of messages) {
     switch (msg.role) {
       case 'user':
         lines.push('');
-        lines.push(theme.styles.accent.render('  You:'));
+        lines.push(new Style().foreground(TAN).bold().render('  You'));
         for (const line of msg.content.split('\n')) {
           lines.push('  ' + line);
         }
@@ -143,7 +158,7 @@ function formatMessages(messages: ChatMessage[], theme: Theme, width: number): s
 
       case 'assistant':
         lines.push('');
-        lines.push(theme.styles.heading.render('  Kaldi:'));
+        lines.push(new Style().foreground(CREAM).bold().render('  Kaldi'));
         const words = msg.content.split(' ');
         let line = '  ';
         for (const word of words) {
@@ -159,19 +174,20 @@ function formatMessages(messages: ChatMessage[], theme: Theme, width: number): s
 
       case 'tool':
         lines.push('');
-        lines.push(theme.styles.toolName.render(`  [${msg.toolName}]`));
-        const outputLines = msg.content.split('\n').slice(0, 8);
+        lines.push(new Style().foreground(SKY_BLUE).bold().render(`  [${msg.toolName}]`));
+        const outputLines = msg.content.split('\n').slice(0, 6);
         for (const l of outputLines) {
-          lines.push('  ' + theme.styles.toolOutput.render(truncate(l, width - 6)));
+          lines.push('  ' + new Style().foreground(GRAY).render(truncate(l, width - 6)));
         }
-        if (msg.content.split('\n').length > 8) {
-          lines.push(theme.styles.dim.render('    ...(truncated)'));
+        if (msg.content.split('\n').length > 6) {
+          lines.push(new Style().foreground(DARK_GRAY).render('    ...(truncated)'));
         }
         break;
 
       case 'error':
         lines.push('');
-        lines.push(theme.styles.error.render('  Error: ' + msg.content));
+        lines.push(new Style().foreground(RED).bold().render('  Error'));
+        lines.push('  ' + new Style().foreground(RED).render(msg.content));
         break;
     }
   }
@@ -184,68 +200,107 @@ function formatMessages(messages: ChatMessage[], theme: Theme, width: number): s
 // ============================================================================
 
 function renderHeader(model: AppModel): string {
-  const titleStyle = new Style()
-    .foreground(rgb(255, 250, 240))
-    .bold();
+  // Kaldi ASCII art (small version)
+  const kaldiArt = model.state === 'thinking'
+    ? new Style().foreground(CREAM).render('  /\\_/\\  ')
+    : new Style().foreground(CREAM).render('  /\\_/\\  ');
 
-  const title = titleStyle.render(` Puppuccino v${VERSION} `);
+  // Title
+  const title = new Style().foreground(CREAM).bold().render('Puppuccino');
+  const version = new Style().foreground(GRAY).render(` v${VERSION}`);
 
-  let status: string;
-  let statusColor: { r: number; g: number; b: number };
+  // Status indicator with animation
+  let statusIcon: string;
+  let statusText: string;
+  let statusColor = GREEN;
 
   switch (model.state) {
     case 'thinking':
-      status = ' ' + Spinner.view(model.spinner) + ' thinking... ';
-      statusColor = rgb(255, 215, 0); // Gold
+      // Animated dots based on frame count
+      const dots = '.'.repeat((model.frameCount % 4));
+      statusIcon = Spinner.view(model.spinner);
+      statusText = `thinking${dots}`;
+      statusColor = GOLD;
       break;
     case 'permission':
-      status = ' permission needed ';
-      statusColor = rgb(255, 165, 0); // Orange
+      statusIcon = '⚠';
+      statusText = 'permission needed';
+      statusColor = GOLD;
       break;
     default:
-      status = ' ready ';
-      statusColor = rgb(144, 238, 144); // Light green
+      statusIcon = '●';
+      statusText = 'ready';
+      statusColor = GREEN;
   }
 
-  const statusStyled = new Style().foreground(statusColor).render(status);
-  const padding = model.width - 24 - status.length;
-  const spacer = ' '.repeat(Math.max(0, padding));
+  const status = new Style().foreground(statusColor).render(`${statusIcon} ${statusText}`);
+
+  // Build header content
+  const leftContent = `${kaldiArt}${title}${version}`;
+  const rightContent = status;
+  const padding = model.width - 28 - statusText.length - 6;
+  const spacer = ' '.repeat(Math.max(1, padding));
 
   return new Style()
     .border(RoundedBorder, true)
-    .borderForeground(rgb(210, 180, 140)) // Tan/warm brown
+    .borderForeground(TAN)
     .width(model.width - 2)
-    .render(title + spacer + statusStyled);
+    .paddingLeft(1)
+    .paddingRight(1)
+    .render(leftContent + spacer + rightContent);
 }
 
 function renderChat(model: AppModel): string {
   const contentHeight = model.height - 10;
   const contentWidth = model.width - 6;
 
+  // Build content
   let content = formatMessages(model.messages, model.theme, contentWidth);
 
   // Add current streaming response
   if (model.currentResponse) {
-    content += '\n\n' + model.theme.styles.heading.render('  Kaldi:');
+    content += '\n\n' + new Style().foreground(CREAM).bold().render('  Kaldi');
     content += '\n  ' + model.currentResponse;
+
+    // Add blinking cursor at end when streaming
+    if (model.state === 'thinking') {
+      const cursor = model.frameCount % 2 === 0 ? '█' : ' ';
+      content += new Style().foreground(GREEN).render(cursor);
+    }
   }
 
-  // Add thinking indicator
+  // Add thinking indicator with animated spinner
   if (model.state === 'thinking' && !model.currentResponse) {
-    content += '\n\n  ' + Spinner.view(model.spinner) + ' ' +
-      model.theme.styles.dim.render('Thinking...');
+    const spinnerFrame = Spinner.view(model.spinner);
+    content += '\n\n  ' + new Style().foreground(GOLD).render(spinnerFrame) + ' ' +
+      new Style().foreground(GRAY).render('Thinking...');
+  }
+
+  // Welcome message if no content
+  if (!content.trim()) {
+    const welcome = [
+      '',
+      new Style().foreground(CREAM).render('      /\\_/\\'),
+      new Style().foreground(CREAM).render('     ( o.o )  ') + new Style().foreground(TAN).render('Woof!'),
+      new Style().foreground(CREAM).render('      > ^ <'),
+      '',
+      new Style().foreground(GRAY).render('  Hi! I\'m Kaldi, your coding companion.'),
+      new Style().foreground(GRAY).render('  Ask me anything or type /help for commands.'),
+      '',
+    ].join('\n');
+    content = welcome;
   }
 
   // Update viewport
   let viewport = Viewport.setContent(
     Viewport.setSize(model.viewport, contentWidth, Math.max(1, contentHeight)),
-    content || '\n  ' + model.theme.styles.dim.render('Start a conversation with Kaldi!')
+    content
   );
   viewport = Viewport.scrollToBottom(viewport);
 
   return new Style()
     .border(RoundedBorder, true)
-    .borderForeground(rgb(100, 100, 100))
+    .borderForeground(DARK_GRAY)
     .width(model.width - 2)
     .height(contentHeight + 2)
     .render(Viewport.view(viewport));
@@ -256,28 +311,28 @@ function renderPermission(model: AppModel): string {
 
   const { toolName, toolInput } = permissionRequest;
   const inputStr = JSON.stringify(toolInput, null, 2);
-  const preview = inputStr.length > 300 ? inputStr.slice(0, 300) + '...' : inputStr;
+  const preview = inputStr.length > 200 ? inputStr.slice(0, 200) + '...' : inputStr;
 
   const yesStyle = model.permissionSelected === 0
-    ? new Style().foreground(rgb(0, 0, 0)).background(rgb(144, 238, 144)).bold()
-    : model.theme.styles.dim;
+    ? new Style().foreground(rgb(0, 0, 0)).background(GREEN).bold()
+    : new Style().foreground(GRAY);
   const noStyle = model.permissionSelected === 1
-    ? new Style().foreground(rgb(0, 0, 0)).background(rgb(255, 99, 71)).bold()
-    : model.theme.styles.dim;
+    ? new Style().foreground(rgb(0, 0, 0)).background(RED).bold()
+    : new Style().foreground(GRAY);
 
   const content = [
     '',
-    model.theme.styles.warning.render(`  Tool requires permission: ${toolName}`),
+    new Style().foreground(GOLD).bold().render(`  Tool: ${toolName}`),
     '',
-    model.theme.styles.dim.render(preview.split('\n').map(l => '  ' + l).join('\n')),
+    new Style().foreground(GRAY).render(preview.split('\n').slice(0, 5).map(l => '  ' + l).join('\n')),
     '',
-    '  ' + yesStyle.render(' [Y] Allow ') + '    ' + noStyle.render(' [N] Deny '),
+    '  ' + yesStyle.render(' Y Allow ') + '    ' + noStyle.render(' N Deny '),
     '',
   ].join('\n');
 
   return new Style()
     .border(RoundedBorder, true)
-    .borderForeground(rgb(255, 215, 0))
+    .borderForeground(GOLD)
     .width(model.width - 4)
     .render(content);
 }
@@ -287,38 +342,53 @@ function renderInput(model: AppModel): string {
     return ''; // Hide input when not idle
   }
 
-  const promptStyle = new Style().foreground(rgb(210, 180, 140)).bold();
-  const prompt = promptStyle.render(' > ');
+  const promptStyle = new Style().foreground(TAN).bold();
+  const prompt = promptStyle.render(' ❯ ');
 
-  // Show cursor character
+  // Show cursor character with blink
   const value = model.input.value;
   const cursor = model.input.cursor;
   const before = value.slice(0, cursor);
   const cursorChar = value[cursor] || ' ';
   const after = value.slice(cursor + 1);
 
-  const cursorStyle = new Style().reverse();
+  // Blinking cursor
+  const cursorVisible = model.frameCount % 2 === 0;
+  const cursorStyle = cursorVisible
+    ? new Style().foreground(rgb(0, 0, 0)).background(GREEN)
+    : new Style();
   const inputDisplay = before + cursorStyle.render(cursorChar) + after;
 
   const placeholder = !value
-    ? model.theme.styles.dim.render('Ask Kaldi anything...')
+    ? new Style().foreground(GRAY).render('Ask Kaldi anything...')
     : inputDisplay;
 
   return new Style()
     .border(RoundedBorder, true)
-    .borderForeground(rgb(144, 238, 144))
+    .borderForeground(GREEN)
     .width(model.width - 2)
     .render(prompt + (value ? inputDisplay : placeholder));
 }
 
 function renderHelp(model: AppModel): string {
-  const bindings = model.state === 'permission'
-    ? 'y: allow  n: deny  tab: switch'
-    : model.state === 'thinking'
-    ? 'ctrl+c: cancel'
-    : 'enter: send  /help: commands  ctrl+c: quit';
+  let bindings: string;
 
-  return model.theme.styles.dim.render('  ' + bindings);
+  if (model.state === 'permission') {
+    bindings = new Style().foreground(GRAY).render(
+      '  y') + new Style().foreground(DARK_GRAY).render(' allow  ') +
+      new Style().foreground(GRAY).render('n') + new Style().foreground(DARK_GRAY).render(' deny  ') +
+      new Style().foreground(GRAY).render('tab') + new Style().foreground(DARK_GRAY).render(' switch');
+  } else if (model.state === 'thinking') {
+    bindings = new Style().foreground(GRAY).render(
+      '  ctrl+c') + new Style().foreground(DARK_GRAY).render(' cancel');
+  } else {
+    bindings = new Style().foreground(GRAY).render(
+      '  enter') + new Style().foreground(DARK_GRAY).render(' send  ') +
+      new Style().foreground(GRAY).render('/help') + new Style().foreground(DARK_GRAY).render(' commands  ') +
+      new Style().foreground(GRAY).render('ctrl+c') + new Style().foreground(DARK_GRAY).render(' quit');
+  }
+
+  return bindings;
 }
 
 // ============================================================================
@@ -365,6 +435,7 @@ function createAppModel(options: {
     currentResponse: '',
     permissionSelected: 0,
     theme,
+    frameCount: 0,
     _config: config,
     _provider: createProviderInstance(config),
     _tools: createToolRegistry(),
@@ -373,7 +444,8 @@ function createAppModel(options: {
     _permissions: permissions,
 
     init(): Cmd<AppMsg> {
-      return none();
+      // Start the animation tick loop immediately
+      return tickCmd();
     },
 
     update(msg: AppMsg): [Model<AppMsg>, Cmd<AppMsg>] {
@@ -399,7 +471,7 @@ function updateModel(model: AppModel, msg: AppMsg): [AppModel, Cmd<AppMsg>] {
       ...model,
       width: msg.width,
       height: msg.height,
-    }, none()];
+    }, tickCmd()];
   }
 
   if (isKeyMsg(msg)) {
@@ -407,68 +479,58 @@ function updateModel(model: AppModel, msg: AppMsg): [AppModel, Cmd<AppMsg>] {
   }
 
   switch ((msg as AppMsg).type) {
-    case 'spinnerTick': {
-      const newModel = {
+    case 'tick': {
+      // Update frame count and spinner
+      let newModel = {
         ...model,
+        frameCount: model.frameCount + 1,
         spinner: Spinner.tick(model.spinner),
       };
 
-      // Continue ticking if still thinking
-      if (model.state === 'thinking') {
-        return [newModel, spinnerTickCmd()];
-      }
-      return [newModel, none()];
-    }
-
-    case 'checkAgent': {
       // Check for permission requests
       if (permissionRequest && model.state !== 'permission') {
-        return [{
-          ...model,
+        newModel = {
+          ...newModel,
           state: 'permission',
           permissionSelected: 0,
-        }, checkAgentCmd()];
+        };
       }
 
-      // Process queued events
-      if (eventQueue.length > 0) {
+      // Process queued agent events
+      while (eventQueue.length > 0) {
         const event = eventQueue.shift()!;
-        const [newModel, cmd] = handleAgentEvent(model, event);
-        return [newModel, cmd];
+        newModel = processAgentEvent(newModel, event);
       }
 
       // Check if agent finished
-      if (!agentRunning && model.state === 'thinking') {
+      if (!agentRunning && model.state === 'thinking' && !permissionRequest) {
         if (agentError) {
           const error = agentError;
           agentError = null;
-          return [{
-            ...model,
+          newModel = {
+            ...newModel,
             state: 'idle',
-            messages: [...model.messages, { role: 'error', content: error }],
+            messages: [...newModel.messages, { role: 'error', content: error }],
             currentResponse: '',
-          }, none()];
+          };
+        } else if (newModel.currentResponse) {
+          // Agent done - save response
+          newModel = {
+            ...newModel,
+            state: 'idle',
+            messages: [...newModel.messages, { role: 'assistant', content: newModel.currentResponse }],
+            currentResponse: '',
+          };
+        } else {
+          newModel = {
+            ...newModel,
+            state: 'idle',
+          };
         }
-
-        // Agent done - save response
-        const newMessages = model.currentResponse
-          ? [...model.messages, { role: 'assistant' as const, content: model.currentResponse }]
-          : model.messages;
-
-        return [{
-          ...model,
-          state: 'idle',
-          messages: newMessages,
-          currentResponse: '',
-        }, none()];
       }
 
-      // Keep checking if agent is running
-      if (agentRunning || model.state === 'thinking' || model.state === 'permission') {
-        return [model, checkAgentCmd()];
-      }
-
-      return [model, none()];
+      // Continue ticking
+      return [newModel, tickCmd()];
     }
 
     case 'permissionResponse': {
@@ -479,78 +541,85 @@ function updateModel(model: AppModel, msg: AppMsg): [AppModel, Cmd<AppMsg>] {
       return [{
         ...model,
         state: 'thinking',
-      }, checkAgentCmd()];
+      }, tickCmd()];
     }
 
     default:
-      return [model, none()];
+      return [model, tickCmd()];
   }
 }
 
-function handleAgentEvent(model: AppModel, event: AgentEvent): [AppModel, Cmd<AppMsg>] {
+function processAgentEvent(model: AppModel, event: AgentEvent): AppModel {
   switch (event.type) {
-    case 'text':
-      return [{
+    case 'text_delta':
+      return {
         ...model,
-        currentResponse: model.currentResponse + event.content,
-      }, checkAgentCmd()];
+        currentResponse: model.currentResponse + event.delta,
+      };
+
+    case 'text':
+      // Full text replaces current response
+      return {
+        ...model,
+        currentResponse: event.content,
+      };
 
     case 'tool_start':
-      return [{
+      return {
         ...model,
         messages: [...model.messages, {
           role: 'tool' as const,
           content: JSON.stringify(event.input, null, 2),
           toolName: event.name,
         }],
-      }, checkAgentCmd()];
+      };
 
     case 'tool_result':
       if (event.result.success) {
         const output = event.result.output;
-        return [{
+        return {
           ...model,
           messages: [...model.messages, {
             role: 'tool' as const,
-            content: output.length > 500 ? output.slice(0, 500) + '...' : output,
+            content: output.length > 400 ? output.slice(0, 400) + '...' : output,
             toolName: 'output',
           }],
-        }, checkAgentCmd()];
+        };
       } else {
-        return [{
+        return {
           ...model,
           messages: [...model.messages, {
             role: 'error' as const,
             content: event.result.error || 'Tool execution failed',
           }],
-        }, checkAgentCmd()];
+        };
       }
 
     case 'tool_denied':
-      return [{
+      return {
         ...model,
         messages: [...model.messages, {
           role: 'error' as const,
           content: `Permission denied: ${event.reason}`,
         }],
-      }, checkAgentCmd()];
+      };
 
     case 'error':
-      return [{
+      return {
         ...model,
         messages: [...model.messages, {
           role: 'error' as const,
           content: event.error,
         }],
-      }, checkAgentCmd()];
+      };
 
     default:
-      return [model, checkAgentCmd()];
+      return model;
   }
 }
 
 function handleKeyMsg(model: AppModel, msg: KeyMsg): [AppModel, Cmd<AppMsg>] {
-  // Ctrl+C quits
+  // Ctrl+C always quits
   if (msg.isCtrl('c')) {
     model._sessionManager.save();
     return [model, quit()];
@@ -568,24 +637,24 @@ function handleKeyMsg(model: AppModel, msg: KeyMsg): [AppModel, Cmd<AppMsg>] {
       return [{
         ...model,
         permissionSelected: model.permissionSelected === 0 ? 1 : 0,
-      }, none()];
+      }, tickCmd()];
     }
     if (msg.key === Key.Enter) {
       return updateModel(model, { type: 'permissionResponse', approved: model.permissionSelected === 0 });
     }
-    return [model, none()];
+    return [model, tickCmd()];
   }
 
   // Thinking state - only allow quit
   if (model.state === 'thinking') {
-    return [model, none()];
+    return [model, tickCmd()];
   }
 
   // Idle state - text input
   if (model.state === 'idle') {
     if (msg.key === Key.Enter) {
       const value = model.input.value.trim();
-      if (!value) return [model, none()];
+      if (!value) return [model, tickCmd()];
 
       if (value.startsWith('/')) {
         return handleCommand(model, value);
@@ -595,44 +664,44 @@ function handleKeyMsg(model: AppModel, msg: KeyMsg): [AppModel, Cmd<AppMsg>] {
     }
 
     if (msg.key === Key.Backspace) {
-      return [{ ...model, input: TextInput.backspace(model.input) }, none()];
+      return [{ ...model, input: TextInput.backspace(model.input) }, tickCmd()];
     }
 
     if (msg.key === Key.Delete) {
-      return [{ ...model, input: TextInput.delete(model.input) }, none()];
+      return [{ ...model, input: TextInput.delete(model.input) }, tickCmd()];
     }
 
     if (msg.key === Key.Left) {
-      return [{ ...model, input: TextInput.cursorLeft(model.input) }, none()];
+      return [{ ...model, input: TextInput.cursorLeft(model.input) }, tickCmd()];
     }
 
     if (msg.key === Key.Right) {
-      return [{ ...model, input: TextInput.cursorRight(model.input) }, none()];
+      return [{ ...model, input: TextInput.cursorRight(model.input) }, tickCmd()];
     }
 
     if (msg.key === Key.Home) {
-      return [{ ...model, input: TextInput.cursorStart(model.input) }, none()];
+      return [{ ...model, input: TextInput.cursorStart(model.input) }, tickCmd()];
     }
 
     if (msg.key === Key.End) {
-      return [{ ...model, input: TextInput.cursorEnd(model.input) }, none()];
+      return [{ ...model, input: TextInput.cursorEnd(model.input) }, tickCmd()];
     }
 
     if (msg.isCtrl('u')) {
-      return [{ ...model, input: TextInput.clear(model.input) }, none()];
+      return [{ ...model, input: TextInput.clear(model.input) }, tickCmd()];
     }
 
     if (msg.isCtrl('w')) {
-      return [{ ...model, input: TextInput.deleteWordBackward(model.input) }, none()];
+      return [{ ...model, input: TextInput.deleteWordBackward(model.input) }, tickCmd()];
     }
 
     // Regular character
     if (msg.sequence && msg.sequence.length === 1 && !msg.ctrl && !msg.alt) {
-      return [{ ...model, input: TextInput.insert(model.input, msg.sequence) }, none()];
+      return [{ ...model, input: TextInput.insert(model.input, msg.sequence) }, tickCmd()];
     }
   }
 
-  return [model, none()];
+  return [model, tickCmd()];
 }
 
 function handleCommand(model: AppModel, command: string): [AppModel, Cmd<AppMsg>] {
@@ -652,7 +721,7 @@ function handleCommand(model: AppModel, command: string): [AppModel, Cmd<AppMsg>
         ...model,
         messages: [],
         input: TextInput.clear(model.input),
-      }, none()];
+      }, tickCmd()];
 
     case 'h':
     case 'help':
@@ -662,17 +731,18 @@ function handleCommand(model: AppModel, command: string): [AppModel, Cmd<AppMsg>
         messages: [...model.messages, {
           role: 'assistant' as const,
           content: `Commands:
-  /help, /?     - Show this help
-  /clear, /c    - Clear conversation
-  /quit, /q     - Exit Puppuccino
+  /help, /?     Show this help
+  /clear, /c    Clear conversation
+  /quit, /q     Exit Puppuccino
 
 Tips:
-  - Just type your message and press Enter
-  - Kaldi can read, write, and edit files
-  - Kaldi can execute shell commands`,
+  Just type your message and press Enter
+  Kaldi can read, write, and edit files
+  Kaldi can run shell commands
+  Press Ctrl+C to quit anytime`,
         }],
         input: TextInput.clear(model.input),
-      }, none()];
+      }, tickCmd()];
 
     default:
       return [{
@@ -682,7 +752,7 @@ Tips:
           content: `Unknown command: /${cmd}`,
         }],
         input: TextInput.clear(model.input),
-      }, none()];
+      }, tickCmd()];
   }
 }
 
@@ -692,7 +762,7 @@ function submitToAgent(model: AppModel, userInput: string): [AppModel, Cmd<AppMs
   const userMessage: Message = { role: 'user', content: userInput };
   model._sessionManager.addMessage(userMessage);
 
-  // Start agent in background
+  // Start agent in background (non-blocking)
   startAgentLoop(model);
 
   return [{
@@ -701,7 +771,7 @@ function submitToAgent(model: AppModel, userInput: string): [AppModel, Cmd<AppMs
     messages: newMessages,
     currentResponse: '',
     input: TextInput.clear(model.input),
-  }, spinnerTickCmd()]; // Start with spinner, it will trigger checkAgent
+  }, tickCmd()];
 }
 
 // ============================================================================
@@ -720,6 +790,7 @@ async function startAgentLoop(model: AppModel): Promise<void> {
       permissions: model._permissions,
       systemPrompt: model._config.agent?.systemPrompt || DEFAULT_SYSTEM_PROMPT,
       maxTurns: model._config.agent?.maxTurns,
+      streaming: true,
       onPermissionRequest: async (toolName, toolInput) => {
         return new Promise<boolean>((resolve) => {
           permissionRequest = { toolName, toolInput, resolve };
@@ -743,15 +814,9 @@ async function startAgentLoop(model: AppModel): Promise<void> {
 // Commands
 // ============================================================================
 
-function spinnerTickCmd(): Cmd<AppMsg> {
-  return tick(80, () => {
-    // Also check agent on each tick
-    return { type: 'checkAgent' } as CheckAgentMsg;
-  });
-}
-
-function checkAgentCmd(): Cmd<AppMsg> {
-  return tick(50, () => ({ type: 'checkAgent' } as CheckAgentMsg));
+function tickCmd(): Cmd<AppMsg> {
+  // Single unified tick at ~30fps for smooth animation
+  return tick(33, () => ({ type: 'tick' } as TickMsg));
 }
 
 // ============================================================================
@@ -792,6 +857,7 @@ export async function runChat(options: {
     altScreen: true,
     mouse: false,
     bracketedPaste: true,
+    title: 'Puppuccino',
   });
 
   await program.run();

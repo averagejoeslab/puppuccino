@@ -1,6 +1,6 @@
 {
   "name": "@averagejoeslab/puppuccino-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Core engine for Puppuccino AI coding agent",
   "type": "module",
   "main": "./dist/index.cjs",

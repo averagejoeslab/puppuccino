@@ -1,8 +1,9 @@
 /**
  * Agent loop - the core agentic execution engine
+ * Now with streaming support!
  */
 
-import type { Provider, LLMResponse, Message, ToolCall } from '../providers/index.js';
+import type { Provider, LLMResponse, Message, ToolCall, StreamEvent } from '../providers/index.js';
 import type { ToolRegistry, Tool, ToolResult } from '../tools/index.js';
 import type { HooksRunner, HookContext } from '../hooks/index.js';
 import type { PermissionChecker } from '../permissions/index.js';
@@ -31,6 +32,7 @@ export interface AgentState {
   permissions?: PermissionChecker;
   systemPrompt?: string;
   maxTurns?: number;
+  streaming?: boolean;
   onPermissionRequest?: (toolName: string, input: Record<string, unknown>) => Promise<boolean>;
 }
 
@@ -50,7 +52,7 @@ When making changes:
 Be friendly, helpful, and thorough in your responses.`;
 
 /**
- * Run the agent loop
+ * Run the agent loop with streaming support
  */
 export async function* runAgentLoop(state: AgentState): AsyncGenerator<AgentEvent> {
   const {
@@ -61,6 +63,7 @@ export async function* runAgentLoop(state: AgentState): AsyncGenerator<AgentEven
     permissions,
     systemPrompt = DEFAULT_SYSTEM_PROMPT,
     maxTurns = 100,
+    streaming = true, // Enable streaming by default
     onPermissionRequest,
   } = state;
 
@@ -85,35 +88,75 @@ export async function* runAgentLoop(state: AgentState): AsyncGenerator<AgentEven
       }
     }
 
-    // Call the LLM
-    let response: LLMResponse;
-    try {
-      response = await provider.chat({
-        model: provider.model,
-        messages,
-        tools: tools.all(),
-        systemPrompt,
-      });
-    } catch (err) {
-      yield { type: 'error', error: err instanceof Error ? err.message : String(err) };
-      return;
+    // Chat options
+    const chatOptions = {
+      model: provider.model,
+      messages,
+      tools: tools.all(),
+      systemPrompt,
+    };
+
+    let responseText = '';
+    let toolCalls: ToolCall[] = [];
+
+    if (streaming) {
+      // STREAMING MODE - yield text deltas as they arrive
+      try {
+        for await (const event of provider.chatStream(chatOptions)) {
+          if (event.type === 'text_delta') {
+            responseText += event.delta;
+            yield { type: 'text_delta', delta: event.delta };
+          } else if (event.type === 'tool_call') {
+            toolCalls.push(event.toolCall);
+          } else if (event.type === 'finish') {
+            // Use the accumulated values
+            responseText = event.text;
+            toolCalls = event.toolCalls;
+          }
+        }
+      } catch (err) {
+        yield { type: 'error', error: err instanceof Error ? err.message : String(err) };
+        return;
+      }
+    } else {
+      // NON-STREAMING MODE - wait for full response
+      try {
+        const response = await provider.chat(chatOptions);
+        responseText = response.text;
+        toolCalls = response.toolCalls;
+
+        // Emit full text at once
+        if (responseText) {
+          yield { type: 'text', content: responseText };
+        }
+      } catch (err) {
+        yield { type: 'error', error: err instanceof Error ? err.message : String(err) };
+        return;
+      }
     }
 
-    // Emit text content
-    if (response.text) {
-      yield { type: 'text', content: response.text };
+    // If we got text in streaming mode, emit the full text event too
+    if (streaming && responseText) {
+      yield { type: 'text', content: responseText };
     }
 
     // Check if we're done (no tool calls)
-    if (response.toolCalls.length === 0) {
-      yield { type: 'done', response };
+    if (toolCalls.length === 0) {
+      yield {
+        type: 'done',
+        response: {
+          text: responseText,
+          toolCalls: [],
+          finishReason: 'stop',
+        },
+      };
       return;
     }
 
     // Process tool calls
     const toolResults: Array<{ tool_use_id: string; content: string }> = [];
 
-    for (const toolCall of response.toolCalls) {
+    for (const toolCall of toolCalls) {
       // Emit tool start event
       yield {
         type: 'tool_start',
@@ -189,8 +232,8 @@ export async function* runAgentLoop(state: AgentState): AsyncGenerator<AgentEven
     messages.push({
       role: 'assistant',
       content: [
-        ...(response.text ? [{ type: 'text' as const, text: response.text }] : []),
-        ...response.toolCalls.map(tc => ({
+        ...(responseText ? [{ type: 'text' as const, text: responseText }] : []),
+        ...toolCalls.map(tc => ({
           type: 'tool_use' as const,
           id: tc.id,
           name: tc.name,
@@ -238,12 +281,13 @@ export async function runAgent(state: AgentState): Promise<{
 export function createAgentState(
   provider: Provider,
   tools: ToolRegistry,
-  options?: Partial<Omit<AgentState, 'provider' | 'tools' | 'messages'>>
+  options?: Partial<Omit<AgentState, 'provider' | 'tools'>> & { messages?: Message[] }
 ): AgentState {
   return {
-    messages: [],
+    messages: options?.messages || [],
     provider,
     tools,
+    streaming: true, // Enable streaming by default
     ...options,
   };
 }

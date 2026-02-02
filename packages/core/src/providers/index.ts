@@ -68,14 +68,12 @@ export interface ChatOptions {
 }
 
 /**
- * Stream event
+ * Stream event types
  */
-export interface StreamEvent {
-  type: 'text' | 'tool_call_start' | 'tool_call_end' | 'finish';
-  text?: string;
-  toolCall?: ToolCall;
-  finishReason?: string;
-}
+export type StreamEvent =
+  | { type: 'text_delta'; delta: string }
+  | { type: 'tool_call'; toolCall: ToolCall }
+  | { type: 'finish'; text: string; toolCalls: ToolCall[]; finishReason: string };
 
 /**
  * Create a provider instance based on config
@@ -167,7 +165,7 @@ export class Provider {
   }
 
   /**
-   * Send a chat request and get a response
+   * Send a chat request and get a response (non-streaming)
    */
   async chat(options: ChatOptions): Promise<LLMResponse> {
     const {
@@ -207,7 +205,7 @@ export class Provider {
   }
 
   /**
-   * Stream a chat response
+   * Stream a chat response with tool call support
    */
   async *chatStream(options: ChatOptions): AsyncGenerator<StreamEvent> {
     const {
@@ -219,7 +217,7 @@ export class Provider {
       temperature = 0.7,
     } = options;
 
-    const result = await streamText({
+    const result = streamText({
       model: this.sdk(model),
       messages: convertMessages(messages),
       system: systemPrompt,
@@ -228,11 +226,32 @@ export class Provider {
       temperature,
     });
 
-    for await (const chunk of result.textStream) {
-      yield { type: 'text', text: chunk };
+    let fullText = '';
+    const toolCalls: ToolCall[] = [];
+
+    // Stream text chunks
+    for await (const chunk of result.fullStream) {
+      if (chunk.type === 'text-delta') {
+        fullText += chunk.textDelta;
+        yield { type: 'text_delta', delta: chunk.textDelta };
+      } else if (chunk.type === 'tool-call') {
+        const tc: ToolCall = {
+          id: chunk.toolCallId,
+          name: chunk.toolName,
+          input: chunk.args as Record<string, unknown>,
+        };
+        toolCalls.push(tc);
+        yield { type: 'tool_call', toolCall: tc };
+      }
     }
 
-    yield { type: 'finish', finishReason: await result.finishReason };
+    // Yield final result
+    yield {
+      type: 'finish',
+      text: fullText,
+      toolCalls,
+      finishReason: await result.finishReason || 'stop',
+    };
   }
 
   /**
