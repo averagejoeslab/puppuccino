@@ -8,7 +8,7 @@ import { Program, Key, KeyMsg, batch, type Cmd } from '@averagejoeslab/tui';
 import { Spinner, TextInput, Viewport } from '@averagejoeslab/widgets';
 import { render as renderMarkdown } from '@averagejoeslab/markdown';
 import { Style } from '@averagejoeslab/style';
-import { getTerminalSize, hideCursor, showCursor, clearScreen, moveCursor } from '@averagejoeslab/term';
+import { getSize, hideCursor, showCursor, clearScreen } from '@averagejoeslab/term';
 
 import type { AgentEvent, Message, Session } from '@averagejoeslab/puppuccino-core';
 import { getTheme, type Theme } from './themes/index.js';
@@ -73,7 +73,7 @@ export function init(options?: {
   theme?: string;
   sessionId?: string;
 }): [Model, Cmd<Msg>] {
-  const { width, height } = getTerminalSize();
+  const { width, height } = getSize();
   const theme = getTheme(options?.theme || 'kaldi');
 
   const model: Model = {

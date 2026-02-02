@@ -1,6 +1,6 @@
 {
   "name": "@averagejoeslab/puppuccino-tui",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Terminal UI for Puppuccino AI coding agent",
   "type": "module",
   "main": "./dist/index.cjs",
