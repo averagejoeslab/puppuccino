@@ -1,5 +1,5 @@
 {
-  "name": "@puppuccino/tui",
+  "name": "@averagejoeslab/puppuccino-tui",
   "version": "0.1.0",
   "description": "Terminal UI for Puppuccino AI coding agent",
   "type": "module",
@@ -21,13 +21,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@puppuccino/core": "*",
-    "@averagejoeslab/ansi": "^0.1.0",
-    "@averagejoeslab/term": "^0.1.0",
-    "@averagejoeslab/style": "^0.1.0",
-    "@averagejoeslab/tui": "^0.1.0",
-    "@averagejoeslab/widgets": "^0.1.0",
-    "@averagejoeslab/markdown": "^0.1.0"
+    "@averagejoeslab/puppuccino-core": "^0.1.0",
+    "@averagejoeslab/ansi": "^1.0.0",
+    "@averagejoeslab/term": "^1.0.0",
+    "@averagejoeslab/style": "^1.0.0",
+    "@averagejoeslab/tui": "^1.0.0",
+    "@averagejoeslab/widgets": "^1.0.0",
+    "@averagejoeslab/markdown": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

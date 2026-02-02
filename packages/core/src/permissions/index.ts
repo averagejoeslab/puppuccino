@@ -51,7 +51,7 @@ export class PermissionChecker {
   private config: Permissions;
 
   constructor(config?: Permissions) {
-    this.config = config || {};
+    this.config = config || { yolo: false };
   }
 
   /**

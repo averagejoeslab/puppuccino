@@ -17,10 +17,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@puppuccino/core": "*",
-    "@puppuccino/tui": "*",
-    "@puppuccino/server": "*",
-    "@puppuccino/sdk": "*",
+    "@averagejoeslab/puppuccino-core": "^0.1.0",
+    "@averagejoeslab/puppuccino-tui": "^0.1.0",
+    "@averagejoeslab/puppuccino-server": "^0.1.0",
+    "@averagejoeslab/puppuccino-sdk": "^0.1.0",
     "yargs": "^17.7.0"
   },
   "devDependencies": {

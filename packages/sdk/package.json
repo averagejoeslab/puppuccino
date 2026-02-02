@@ -1,5 +1,5 @@
 {
-  "name": "@puppuccino/sdk",
+  "name": "@averagejoeslab/puppuccino-sdk",
   "version": "0.1.0",
   "description": "SDK for programmatic access to Puppuccino",
   "type": "module",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@puppuccino/core": "*"
+    "@averagejoeslab/puppuccino-core": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

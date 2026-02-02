@@ -25,7 +25,7 @@ import {
   listSessions,
   loadSession,
   deleteSession,
-} from '@puppuccino/core';
+} from '@averagejoeslab/puppuccino-core';
 
 /**
  * Server state

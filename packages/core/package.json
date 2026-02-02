@@ -1,5 +1,5 @@
 {
-  "name": "@puppuccino/core",
+  "name": "@averagejoeslab/puppuccino-core",
   "version": "0.1.0",
   "description": "Core engine for Puppuccino AI coding agent",
   "type": "module",

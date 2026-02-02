@@ -18,7 +18,7 @@ import {
   runAgentLoop,
   createAgentState,
   DEFAULT_SYSTEM_PROMPT,
-} from '@puppuccino/core';
+} from '@averagejoeslab/puppuccino-core';
 
 /**
  * Query options
@@ -261,4 +261,4 @@ export function createClient(config?: Partial<Config>): PuppuccinoClient {
 }
 
 // Re-export types
-export type { Config, Message, AgentEvent, Session } from '@puppuccino/core';
+export type { Config, Message, AgentEvent, Session } from '@averagejoeslab/puppuccino-core';

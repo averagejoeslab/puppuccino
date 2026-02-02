@@ -1,5 +1,5 @@
 {
-  "name": "@puppuccino/server",
+  "name": "@averagejoeslab/puppuccino-server",
   "version": "0.1.0",
   "description": "HTTP server for Puppuccino AI coding agent",
   "type": "module",
@@ -22,7 +22,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@puppuccino/core": "*",
+    "@averagejoeslab/puppuccino-core": "^0.1.0",
     "hono": "^4.0.0",
     "zod": "^3.23.0"
   },

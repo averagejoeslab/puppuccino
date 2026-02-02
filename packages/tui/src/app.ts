@@ -10,7 +10,7 @@ import { render as renderMarkdown } from '@averagejoeslab/markdown';
 import { Style } from '@averagejoeslab/style';
 import { getTerminalSize, hideCursor, showCursor, clearScreen, moveCursor } from '@averagejoeslab/term';
 
-import type { AgentEvent, Message, Session } from '@puppuccino/core';
+import type { AgentEvent, Message, Session } from '@averagejoeslab/puppuccino-core';
 import { getTheme, type Theme } from './themes/index.js';
 import { getWelcomeBanner, getGoodbyeBanner, getPrompt, KALDI } from './components/kaldi.js';
 

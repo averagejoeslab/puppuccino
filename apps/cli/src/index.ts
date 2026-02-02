@@ -22,7 +22,7 @@ import {
   type Message,
   type AgentEvent,
   VERSION,
-} from '@puppuccino/core';
+} from '@averagejoeslab/puppuccino-core';
 
 import {
   getWelcomeBanner,
@@ -30,9 +30,9 @@ import {
   getPrompt,
   getTheme,
   KALDI,
-} from '@puppuccino/tui';
+} from '@averagejoeslab/puppuccino-tui';
 
-import { startServer } from '@puppuccino/server';
+import { startServer } from '@averagejoeslab/puppuccino-server';
 import { Style } from '@averagejoeslab/style';
 
 /**
