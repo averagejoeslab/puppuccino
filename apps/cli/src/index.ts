@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
  * Puppuccino CLI - AI coding agent for the terminal
  *

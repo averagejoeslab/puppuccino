@@ -14,7 +14,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
-    "puppuccino": "bun run apps/cli/src/index.ts"
+    "puppuccino": "npx tsx apps/cli/src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
