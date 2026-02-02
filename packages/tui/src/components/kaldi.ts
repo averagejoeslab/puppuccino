@@ -5,6 +5,13 @@
 import { Style } from '@averagejoeslab/style';
 
 /**
+ * Helper to create RGB color object
+ */
+function rgb(r: number, g: number, b: number) {
+  return { r, g, b };
+}
+
+/**
  * Kaldi ASCII art variations
  */
 export const KALDI = {
@@ -67,8 +74,9 @@ export const KALDI_COLORS = {
  */
 export function getKaldi(variant: keyof typeof KALDI = 'normal'): string {
   const art = KALDI[variant];
+  const [r, g, b] = KALDI_COLORS.body;
   const style = new Style()
-    .foregroundRGB(...KALDI_COLORS.body)
+    .foreground(rgb(r, g, b))
     .bold();
 
   return style.render(art);
@@ -78,8 +86,10 @@ export function getKaldi(variant: keyof typeof KALDI = 'normal'): string {
  * Welcome banner with Kaldi
  */
 export function getWelcomeBanner(version: string = '0.1.0'): string {
-  const style = new Style().foregroundRGB(...KALDI_COLORS.body);
-  const accentStyle = new Style().foregroundRGB(...KALDI_COLORS.accent);
+  const [r1, g1, b1] = KALDI_COLORS.body;
+  const [r2, g2, b2] = KALDI_COLORS.accent;
+  const style = new Style().foreground(rgb(r1, g1, b1));
+  const accentStyle = new Style().foreground(rgb(r2, g2, b2));
 
   const banner = `
 ${style.render(KALDI.normal)}
@@ -96,7 +106,8 @@ ${accentStyle.render('  ╚═════════════════�
  * Goodbye message with Kaldi
  */
 export function getGoodbyeBanner(): string {
-  const style = new Style().foregroundRGB(...KALDI_COLORS.body);
+  const [r, g, b] = KALDI_COLORS.body;
+  const style = new Style().foreground(rgb(r, g, b));
 
   return `
 ${style.render(KALDI.happy)}

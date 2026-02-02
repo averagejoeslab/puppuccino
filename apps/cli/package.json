@@ -1,6 +1,6 @@
 {
   "name": "puppuccino",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "AI coding agent for the terminal, featuring Kaldi the Great Pyrenees",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@averagejoeslab/puppuccino-core": "^0.1.1",
-    "@averagejoeslab/puppuccino-tui": "^0.1.4",
+    "@averagejoeslab/puppuccino-tui": "^0.1.5",
     "@averagejoeslab/puppuccino-server": "^0.1.2",
     "@averagejoeslab/puppuccino-sdk": "^0.1.1",
     "yargs": "^17.7.0"

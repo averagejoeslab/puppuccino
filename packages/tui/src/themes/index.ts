@@ -5,6 +5,13 @@
 import { Style } from '@averagejoeslab/style';
 
 /**
+ * Helper to create RGB color object
+ */
+function rgb(r: number, g: number, b: number) {
+  return { r, g, b };
+}
+
+/**
  * Theme color palette
  */
 export interface ThemeColors {
@@ -61,19 +68,19 @@ export const KaldiTheme: Theme = {
     info: [135, 206, 235], // Sky blue
   },
   styles: {
-    heading: new Style().foregroundRGB(255, 250, 240).bold(),
-    text: new Style().foregroundRGB(245, 245, 245),
-    dim: new Style().foregroundRGB(169, 169, 169),
-    accent: new Style().foregroundRGB(210, 180, 140),
-    success: new Style().foregroundRGB(144, 238, 144),
-    error: new Style().foregroundRGB(255, 99, 71),
-    warning: new Style().foregroundRGB(255, 215, 0),
-    info: new Style().foregroundRGB(135, 206, 235),
-    code: new Style().foregroundRGB(255, 250, 240).background(52),
-    link: new Style().foregroundRGB(135, 206, 235).underline(),
-    prompt: new Style().foregroundRGB(210, 180, 140).bold(),
-    toolName: new Style().foregroundRGB(135, 206, 235).bold(),
-    toolOutput: new Style().foregroundRGB(169, 169, 169),
+    heading: new Style().foreground(rgb(255, 250, 240)).bold(),
+    text: new Style().foreground(rgb(245, 245, 245)),
+    dim: new Style().foreground(rgb(169, 169, 169)),
+    accent: new Style().foreground(rgb(210, 180, 140)),
+    success: new Style().foreground(rgb(144, 238, 144)),
+    error: new Style().foreground(rgb(255, 99, 71)),
+    warning: new Style().foreground(rgb(255, 215, 0)),
+    info: new Style().foreground(rgb(135, 206, 235)),
+    code: new Style().foreground(rgb(255, 250, 240)).background(52),
+    link: new Style().foreground(rgb(135, 206, 235)).underline(),
+    prompt: new Style().foreground(rgb(210, 180, 140)).bold(),
+    toolName: new Style().foreground(rgb(135, 206, 235)).bold(),
+    toolOutput: new Style().foreground(rgb(169, 169, 169)),
   },
 };
 
@@ -95,19 +102,19 @@ export const DarkTheme: Theme = {
     info: [97, 175, 239],
   },
   styles: {
-    heading: new Style().foregroundRGB(97, 175, 239).bold(),
-    text: new Style().foregroundRGB(220, 220, 220),
-    dim: new Style().foregroundRGB(128, 128, 128),
-    accent: new Style().foregroundRGB(229, 192, 123),
-    success: new Style().foregroundRGB(152, 195, 121),
-    error: new Style().foregroundRGB(224, 108, 117),
-    warning: new Style().foregroundRGB(229, 192, 123),
-    info: new Style().foregroundRGB(97, 175, 239),
-    code: new Style().foregroundRGB(220, 220, 220).background(236),
-    link: new Style().foregroundRGB(97, 175, 239).underline(),
-    prompt: new Style().foregroundRGB(152, 195, 121).bold(),
-    toolName: new Style().foregroundRGB(97, 175, 239).bold(),
-    toolOutput: new Style().foregroundRGB(128, 128, 128),
+    heading: new Style().foreground(rgb(97, 175, 239)).bold(),
+    text: new Style().foreground(rgb(220, 220, 220)),
+    dim: new Style().foreground(rgb(128, 128, 128)),
+    accent: new Style().foreground(rgb(229, 192, 123)),
+    success: new Style().foreground(rgb(152, 195, 121)),
+    error: new Style().foreground(rgb(224, 108, 117)),
+    warning: new Style().foreground(rgb(229, 192, 123)),
+    info: new Style().foreground(rgb(97, 175, 239)),
+    code: new Style().foreground(rgb(220, 220, 220)).background(236),
+    link: new Style().foreground(rgb(97, 175, 239)).underline(),
+    prompt: new Style().foreground(rgb(152, 195, 121)).bold(),
+    toolName: new Style().foreground(rgb(97, 175, 239)).bold(),
+    toolOutput: new Style().foreground(rgb(128, 128, 128)),
   },
 };
 
@@ -129,19 +136,19 @@ export const LightTheme: Theme = {
     info: [0, 95, 184],
   },
   styles: {
-    heading: new Style().foregroundRGB(0, 95, 184).bold(),
-    text: new Style().foregroundRGB(33, 33, 33),
-    dim: new Style().foregroundRGB(117, 117, 117),
-    accent: new Style().foregroundRGB(202, 138, 4),
-    success: new Style().foregroundRGB(40, 167, 69),
-    error: new Style().foregroundRGB(220, 53, 69),
-    warning: new Style().foregroundRGB(202, 138, 4),
-    info: new Style().foregroundRGB(0, 95, 184),
-    code: new Style().foregroundRGB(33, 33, 33).background(253),
-    link: new Style().foregroundRGB(0, 95, 184).underline(),
-    prompt: new Style().foregroundRGB(40, 167, 69).bold(),
-    toolName: new Style().foregroundRGB(0, 95, 184).bold(),
-    toolOutput: new Style().foregroundRGB(117, 117, 117),
+    heading: new Style().foreground(rgb(0, 95, 184)).bold(),
+    text: new Style().foreground(rgb(33, 33, 33)),
+    dim: new Style().foreground(rgb(117, 117, 117)),
+    accent: new Style().foreground(rgb(202, 138, 4)),
+    success: new Style().foreground(rgb(40, 167, 69)),
+    error: new Style().foreground(rgb(220, 53, 69)),
+    warning: new Style().foreground(rgb(202, 138, 4)),
+    info: new Style().foreground(rgb(0, 95, 184)),
+    code: new Style().foreground(rgb(33, 33, 33)).background(253),
+    link: new Style().foreground(rgb(0, 95, 184)).underline(),
+    prompt: new Style().foreground(rgb(40, 167, 69)).bold(),
+    toolName: new Style().foreground(rgb(0, 95, 184)).bold(),
+    toolOutput: new Style().foreground(rgb(117, 117, 117)),
   },
 };
 
