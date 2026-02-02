@@ -37,6 +37,6 @@ export {
 } from './components/kaldi.js';
 
 // Re-export useful types from dependencies
-export { Program, Key, Cmd } from '@averagejoeslab/tui';
+export { Program, Key, type Cmd } from '@averagejoeslab/tui';
 export { Style } from '@averagejoeslab/style';
 export { render as renderMarkdown } from '@averagejoeslab/markdown';

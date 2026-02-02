@@ -4,7 +4,7 @@
  * Uses the Elm Architecture from @averagejoeslab/tui
  */
 
-import { Program, Cmd, Key, KeyMsg, batch } from '@averagejoeslab/tui';
+import { Program, Key, KeyMsg, batch, type Cmd } from '@averagejoeslab/tui';
 import { Spinner, TextInput, Viewport } from '@averagejoeslab/widgets';
 import { render as renderMarkdown } from '@averagejoeslab/markdown';
 import { Style } from '@averagejoeslab/style';
